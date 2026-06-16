@@ -17,7 +17,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok"}
 
 def solve_knapsack(items, capacity):
     dp = [ {'val': -1, 'weight': 0, 'items': []} for _ in range(capacity + 1) ]

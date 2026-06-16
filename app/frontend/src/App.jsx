@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UploadCloud, FileSpreadsheet, Download, RefreshCw, CheckCircle2, AlertCircle, Settings2 } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, Download, RefreshCw, CheckCircle2, AlertCircle, Settings2, ShieldCheck, ShieldAlert, Coffee } from 'lucide-react';
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://ratio-automation-system.onrender.com/api";
 
 function App() {
   const [file, setFile] = useState(null);
@@ -14,9 +14,50 @@ function App() {
   const [wasteConfig, setWasteConfig] = useState("4,5,6");
   
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null); // Will now be an object: {"4%": {plates}, "5%": {plates}}
+  const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
   const [error, setError] = useState("");
+  
+  // Server Wakeup Status
+  const [serverStatus, setServerStatus] = useState("checking"); // 'checking', 'awake', 'sleeping', 'error'
+  const [pingCount, setPingCount] = useState(0);
+
+  const checkHealth = async () => {
+    setServerStatus("checking");
+    try {
+      // Direct call to health check endpoint
+      await axios.get(`${API_BASE}/health`, { timeout: 8000 });
+      setServerStatus("awake");
+    } catch (err) {
+      console.error("Health check error:", err);
+      if (err.code === "ECONNABORTED" || !err.response) {
+        // Network timeout or no response means the free-tier server is likely sleeping
+        setServerStatus("sleeping");
+      } else {
+        setServerStatus("error");
+      }
+    }
+  };
+
+  useEffect(() => {
+    checkHealth();
+  }, [pingCount]);
+
+  // Periodic auto-check if sleeping to see when it wakes up
+  useEffect(() => {
+    let interval;
+    if (serverStatus === "sleeping" || serverStatus === "checking") {
+      interval = setInterval(() => {
+        axios.get(`${API_BASE}/health`, { timeout: 5000 })
+          .then(() => {
+            setServerStatus("awake");
+            clearInterval(interval);
+          })
+          .catch(() => {});
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [serverStatus]);
 
   const handleDragOver = (e) => e.preventDefault();
 
@@ -47,17 +88,25 @@ function App() {
 
     try {
       const response = await axios.post(`${API_BASE}/calculate`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 90000 // Allow up to 90 seconds in case backend is doing heavy calculation or spinning up
       });
       const resultData = response.data;
       setData(resultData);
       
-      // Default to the first available tab
       const keys = Object.keys(resultData);
       if (keys.length > 0) setActiveTab(keys[0]);
       
     } catch (err) {
-      setError(err.response?.data?.detail || "An error occurred during processing.");
+      console.error(err);
+      if (err.code === "ECONNABORTED") {
+        setError("Request timed out. The server took too long to respond. It may still be warming up or restarting. Please try again in a moment.");
+      } else if (!err.response) {
+        setError("Network Error: Cannot connect to the server. The backend (Render.com) might be asleep or down. Please wait for the status indicator to turn green.");
+        setServerStatus("sleeping");
+      } else {
+        setError(err.response?.data?.detail || `Error (${err.response.status}): ${err.response.statusText || 'Processing failed'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -77,7 +126,7 @@ function App() {
       link.click();
       link.parentNode.removeChild(link);
     } catch (err) {
-      alert("Failed to export.");
+      alert("Failed to export Excel file. Please try again.");
     }
   };
 
@@ -121,8 +170,42 @@ function App() {
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Header */}
-        <div className="text-center">
+        {/* Header & Status Indicator */}
+        <div className="text-center relative">
+          <div className="absolute right-0 top-0 flex items-center space-x-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200">
+            {serverStatus === "checking" && (
+              <>
+                <RefreshCw className="w-4 h-4 text-indigo-500 animate-spin" />
+                <span className="text-xs font-semibold text-gray-600">Connecting Server...</span>
+              </>
+            )}
+            {serverStatus === "awake" && (
+              <>
+                <ShieldCheck className="w-4 h-4 text-green-500" />
+                <span className="text-xs font-bold text-green-600">Server Awake</span>
+              </>
+            )}
+            {serverStatus === "sleeping" && (
+              <>
+                <Coffee className="w-4 h-4 text-amber-500 animate-bounce" />
+                <span className="text-xs font-semibold text-amber-600">Waking Up (takes ~1 min)...</span>
+              </>
+            )}
+            {serverStatus === "error" && (
+              <>
+                <ShieldAlert className="w-4 h-4 text-red-500" />
+                <span className="text-xs font-bold text-red-600">Server Offline</span>
+              </>
+            )}
+            <button 
+              onClick={() => setPingCount(prev => prev + 1)}
+              className="text-gray-400 hover:text-indigo-600 transition"
+              title="Ping server status manually"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
             Ratio Automation System
           </h1>
@@ -135,6 +218,16 @@ function App() {
         {!data && (
           <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-200">
             
+            {/* Warning if server is sleeping */}
+            {serverStatus === "sleeping" && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm flex items-start">
+                <Coffee className="w-5 h-5 mr-3 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Server is currently sleeping (Render.com Free Tier).</span> It takes about 50-60 seconds of waiting for it to spin up. The app is automatically checking the connection. You can wait or try upload once the indicator at the top turns green.
+                </div>
+              </div>
+            )}
+
             {/* Config Fields */}
             <div className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
               <h3 className="text-lg font-bold text-gray-800 flex items-center mb-4">
@@ -210,9 +303,12 @@ function App() {
             </div>
 
             {error && (
-              <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg flex items-center">
-                <AlertCircle className="w-5 h-5 mr-2" />
-                {error}
+              <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg flex items-start">
+                <AlertCircle className="w-5 h-5 mr-3 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Error details:</span>
+                  <p className="mt-1">{error}</p>
+                </div>
               </div>
             )}
             
