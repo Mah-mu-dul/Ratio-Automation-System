@@ -54,7 +54,8 @@ def pack_plates(skus: List[Dict[str, Any]], plate_up: int, page_up: int, one_upc
         candidate_runs = set()
         for item in unassigned:
             q = item['qty']
-            for u in range(1, capacity + 1):
+            for u_page in range(1, plate_up + 1):
+                u = u_page * page_up
                 candidate_runs.add(math.ceil(q / u))
         candidate_runs = sorted(list(candidate_runs))
         
@@ -65,8 +66,9 @@ def pack_plates(skus: List[Dict[str, Any]], plate_up: int, page_up: int, one_upc
             valid_items = []
             for i, item in enumerate(unassigned):
                 q = item['qty']
-                u = math.ceil(q / R)
-                if u > capacity or u <= 0: continue
+                u_page = math.ceil(q / (R * page_up))
+                u = u_page * page_up
+                if u_page > plate_up or u_page <= 0: continue
                 waste = u * R - q
                 waste_pct = (waste / q) * 100 if q > 0 else 0
                 
@@ -122,7 +124,7 @@ def pack_plates(skus: List[Dict[str, Any]], plate_up: int, page_up: int, one_upc
         else:
             item = unassigned.pop(0)
             q = item['qty']
-            u = one_upc_plate_up
+            u = one_upc_plate_up * page_up
             R = math.ceil(q / u)
             waste = u * R - q
             
@@ -158,7 +160,7 @@ async def calculate_layout(
     plate_up: int = Form(10),
     page_up: int = Form(10),
     one_upc_plate_up: int = Form(10),
-    waste_config: str = Form("4,5,6")
+    waste_config: str = Form("5,10,15")
 ):
     if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
         raise HTTPException(status_code=400, detail="Invalid file type")

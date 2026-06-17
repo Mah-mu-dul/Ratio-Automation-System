@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { UploadCloud, FileSpreadsheet, Download, RefreshCw, CheckCircle2, AlertCircle, Settings2, ShieldCheck, ShieldAlert, Coffee } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, Download, RefreshCw, CheckCircle2, AlertCircle, Settings2, ShieldCheck, ShieldAlert, Coffee, Terminal } from 'lucide-react';
 
 const DEFAULT_API_BASE = import.meta.env.VITE_API_BASE || "https://ratio-automation-system.onrender.com/api";
 
@@ -47,7 +47,7 @@ function App() {
   const [plateUp, setPlateUp] = useState(10);
   const [pageUp, setPageUp] = useState(1);
   const [oneUpcPlateUp, setOneUpcPlateUp] = useState(10);
-  const [wasteConfig, setWasteConfig] = useState("4,5,6");
+  const [wasteConfig, setWasteConfig] = useState("5,10,15");
   
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
@@ -180,32 +180,83 @@ function App() {
     if (!plates || plates.length === 0) {
       return <p className="p-4 text-gray-500">No layout generated for this percentage.</p>;
     }
+
+    // Get unique plates to assign colors
+    const uniquePlates = Array.from(new Set(plates.map(item => item['Plate#'])));
+
+    const plateBgColors = [
+      'bg-blue-50/60 hover:bg-blue-50/80',
+      'bg-emerald-50/60 hover:bg-emerald-50/80',
+      'bg-amber-50/60 hover:bg-amber-50/80',
+      'bg-purple-50/60 hover:bg-purple-50/80',
+      'bg-rose-50/60 hover:bg-rose-50/80',
+      'bg-cyan-50/60 hover:bg-cyan-50/80',
+      'bg-orange-50/60 hover:bg-orange-50/80',
+      'bg-teal-50/60 hover:bg-teal-50/80'
+    ];
+
+    const plateBorderColors = [
+      'border-blue-200',
+      'border-emerald-200',
+      'border-amber-200',
+      'border-purple-200',
+      'border-rose-200',
+      'border-cyan-200',
+      'border-orange-200',
+      'border-teal-200'
+    ];
+
+    const separatorBorderColors = [
+      'border-t-2 border-blue-400',
+      'border-t-2 border-emerald-400',
+      'border-t-2 border-amber-400',
+      'border-t-2 border-purple-400',
+      'border-t-2 border-rose-400',
+      'border-t-2 border-cyan-400',
+      'border-t-2 border-orange-400',
+      'border-t-2 border-teal-400'
+    ];
+
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-auto max-h-[80vh] border border-gray-200 rounded-b-lg">
+        <table className="min-w-full divide-y divide-gray-200 border-collapse">
+          <thead className="bg-gray-100 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
             <tr>
-              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Plate#</th>
-              <th scope="col" className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SIZE</th>
-              <th scope="col" className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Plate Run</th>
-              <th scope="col" className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Repeat</th>
-              <th scope="col" className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
-              <th scope="col" className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Waste</th>
-              <th scope="col" className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Rec#</th>
+              <th scope="col" className="bg-gray-100 px-4 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Plate#</th>
+              <th scope="col" className="bg-gray-100 px-4 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">SIZE</th>
+              <th scope="col" className="bg-gray-100 px-4 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Plate Run</th>
+              <th scope="col" className="bg-gray-100 px-4 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Repeat</th>
+              <th scope="col" className="bg-gray-100 px-4 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Qty</th>
+              <th scope="col" className="bg-gray-100 px-4 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Waste</th>
+              <th scope="col" className="bg-gray-100 px-4 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Rec#</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {plates.map((item, itemIdx) => (
-              <tr key={itemIdx} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-1.5 whitespace-nowrap text-sm font-semibold text-gray-900">{item['Plate#']}</td>
-                <td className="px-4 py-1.5 whitespace-nowrap text-sm font-medium text-gray-800">{item['SIZE']}</td>
-                <td className="px-4 py-1.5 whitespace-nowrap text-sm text-right text-indigo-600 font-bold">{item['Plate Run']}</td>
-                <td className="px-4 py-1.5 whitespace-nowrap text-sm text-right text-gray-500">{item['Repeat']}</td>
-                <td className="px-4 py-1.5 whitespace-nowrap text-sm text-right text-gray-900 font-medium">{item['Qty']}</td>
-                <td className="px-4 py-1.5 whitespace-nowrap text-sm text-right text-red-500 font-medium">{item['Waste']}</td>
-                <td className="px-4 py-1.5 whitespace-nowrap text-sm text-right text-gray-500">{item['Rec#']}</td>
-              </tr>
-            ))}
+          <tbody className="bg-white">
+            {plates.map((item, itemIdx) => {
+              const plateVal = item['Plate#'];
+              const plateColorIdx = uniquePlates.indexOf(plateVal) % plateBgColors.length;
+              const isNewPlate = itemIdx === 0 || plates[itemIdx - 1]['Plate#'] !== plateVal;
+              
+              const bgClass = plateBgColors[plateColorIdx];
+              const borderClass = isNewPlate 
+                ? (itemIdx === 0 ? '' : separatorBorderColors[plateColorIdx]) 
+                : 'border-t border-gray-200/40';
+
+              return (
+                <tr 
+                  key={itemIdx} 
+                  className={`${bgClass} ${borderClass} transition-colors`}
+                >
+                  <td className="px-4 py-2 whitespace-nowrap text-sm font-bold text-gray-900">{plateVal}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-800">{item['SIZE']}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-indigo-700 font-extrabold">{item['Plate Run']}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 font-medium">{item['Repeat']}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 font-bold">{item['Qty']}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-red-600 font-semibold">{item['Waste']}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-500">{item['Rec#']}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -220,6 +271,9 @@ function App() {
         <div className="text-center relative pb-2">
           <div className="absolute right-0 top-0 flex flex-col items-end space-y-1 z-10">
             <div className="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-full shadow-sm border border-gray-200">
+              {useLocalhost && (
+                <Terminal className="w-3.5 h-3.5 text-red-500 animate-pulse mr-0.5" title="Localhost Dev Mode Active" />
+              )}
               {serverStatus === "checking" && (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 text-indigo-500 animate-spin" />
@@ -301,7 +355,15 @@ function App() {
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs flex items-start">
                 <Coffee className="w-4 h-4 mr-2 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">Server is currently sleeping (Render.com Free Tier).</span> It takes about 50-60 seconds to spin up. The app is checking the connection automatically.
+                  {useLocalhost ? (
+                    <>
+                      <span className="font-bold">Local server is not responding (Localhost Dev Mode).</span> Please ensure your backend server is running at <code className="bg-amber-100 px-1 rounded">{localUrl}</code>.
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-bold">Server is currently sleeping (Render.com Free Tier).</span> It takes about 50-60 seconds to spin up. The app is checking the connection automatically.
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -347,7 +409,7 @@ function App() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Max Paper Waste (%)</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. 4,5,6"
+                    placeholder="e.g. 5,10,15"
                     value={wasteConfig} 
                     onChange={(e) => setWasteConfig(e.target.value)}
                     className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
